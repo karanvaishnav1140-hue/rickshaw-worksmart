@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNG Rickshaw Business Pro</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#0f172a;
+color:white;
+}
+
+.header{
+text-align:center;
+padding:15px;
+font-size:20px;
+font-weight:bold;
+background:#1e293b;
+}
+
+.screen{
+display:none;
+padding:15px;
+padding-bottom:90px;
+}
+
+.active{display:block;}
+
+.card{
+background:#1e293b;
+padding:15px;
+margin-bottom:15px;
+border-radius:12px;
+}
+
+input,select,button{
+width:100%;
+padding:10px;
+margin:5px 0;
+border-radius:8px;
+border:none;
+}
+
+button{
+background:#22c55e;
+color:white;
+font-weight:bold;
+}
+
+.alert-low{
+background:orange;
+padding:8px;
+border-radius:8px;
+margin-top:8px;
+}
+
+.alert-verylow{
+background:red;
+padding:8px;
+border-radius:8px;
+margin-top:8px;
+}
+
+.bottom-nav{
+position:fixed;
+bottom:0;
+width:100%;
+background:#000;
+display:flex;
+justify-content:space-around;
+padding:10px 0;
+}
+
+.bottom-nav div{
+text-align:center;
+font-size:12px;
+}
+
+.bottom-nav i{
+display:block;
+font-size:20px;
+}
+
+canvas{
+background:white;
+border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+🚕 CNG Rickshaw Business Pro
+</div>
+
+<!-- DAILY SCREEN -->
+<div id="daily" class="screen active">
+
+<div class="card">
+<h3>CNG Settings</h3>
+<input type="number" id="mileage" placeholder="Mileage (KM per KG)">
+<input type="number" id="tankCapacity" placeholder="Cylinder Capacity (KG)">
+</div>
+
+<div class="card">
+<h3>Daily Entry</h3>
+<input type="date" id="date">
+<input type="number" id="km" placeholder="KM Driven">
+<input type="number" id="earning" placeholder="Earning ₹">
+<input type="number" id="fuel" placeholder="CNG Filled (KG)">
+<button onclick="save()">Save Entry</button>
+</div>
+
+<div class="card">
+<h3>CNG Status</h3>
+<p id="fuelStatus"></p>
+<div id="fuelAlert"></div>
+</div>
+
+<div class="card">
+<h3>Daily Earnings Chart</h3>
+<canvas id="dailyChart"></canvas>
+</div>
+
+</div>
+
+<!-- MONTHLY SCREEN -->
+<div id="monthly" class="screen">
+<div class="card">
+<input type="month" id="monthFilter" onchange="display()">
+<button onclick="exportCSV()">Export Excel</button>
+</div>
+
+<div class="card">
+<p id="monthlySummary"></p>
+</div>
+</div>
+
+<!-- MAINTENANCE SCREEN -->
+<div id="maintenance" class="screen">
+<div class="card">
+<select id="maintType">
+<option>Service</option>
+<option>Oil Change</option>
+<option>Tyre</option>
+<option>Repair</option>
+</select>
+<input type="number" id="maintCost" placeholder="Cost ₹">
+<button onclick="addMaintenance()">Add</button>
+</div>
+
+<div class="card">
+<h3>Maintenance Chart</h3>
+<canvas id="maintChart"></canvas>
+</div>
+</div>
+
+<!-- CHART SCREEN -->
+<div id="charts" class="screen">
+<div class="card">
+<h3>Profit Chart</h3>
+<canvas id="profitChart"></canvas>
+</div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+<div onclick="openScreen('daily')"><i>📅</i>Daily</div>
+<div onclick="openScreen('monthly')"><i>📊</i>Monthly</div>
+<div onclick="openScreen('maintenance')"><i>🔧</i>Maint.</div>
+<div onclick="openScreen('charts')"><i>📈</i>Charts</div>
+</div>
+
+<script>
+
+let records = JSON.parse(localStorage.getItem("cngFullRecords")) || [];
+let maintenance = JSON.parse(localStorage.getItem("cngMaintRecords")) || [];
+
+let dailyChart, profitChart, maintChart;
+
+function openScreen(id){
+document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+display();
+}
+
+function save(){
+
+let date = document.getElementById("date").value;
+let km = parseFloat(document.getElementById("km").value);
+let earning = parseFloat(document.getElementById("earning").value);
+let fuel = parseFloat(document.getElementById("fuel").value);
+
+if(!date || isNaN(km) || isNaN(earning) || isNaN(fuel)){
+alert("Please fill all fields properly");
+return;
+}
+
+let profit = earning; // CNG cost separate track nahi kar rahe
+
+records.push({date,km,earning,fuel,profit});
+localStorage.setItem("cngFullRecords", JSON.stringify(records));
+
+display();
+}
+
+function addMaintenance(){
+let type = document.getElementById("maintType").value;
+let cost = parseFloat(document.getElementById("maintCost").value);
+
+if(isNaN(cost)){ alert("Enter cost"); return; }
+
+maintenance.push({type,cost});
+localStorage.setItem("cngMaintRecords", JSON.stringify(maintenance));
+
+display();
+}
+
+function display(){
+
+let mileage = parseFloat(document.getElementById("mileage").value) || 35;
+
+let totalKM = records.reduce((a,b)=>a+b.km,0);
+let totalCNGFilled = records.reduce((a,b)=>a+b.fuel,0);
+
+let cngUsed = totalKM / mileage;
+let cngRemaining = totalCNGFilled - cngUsed;
+if(cngRemaining < 0) cngRemaining = 0;
+
+let kmPossible = cngRemaining * mileage;
+
+document.getElementById("fuelStatus").innerHTML =
+"Total CNG Filled: "+totalCNGFilled.toFixed(2)+" KG<br>"+
+"CNG Used: "+cngUsed.toFixed(2)+" KG<br>"+
+"<b>CNG Remaining: "+cngRemaining.toFixed(2)+" KG</b><br>"+
+"KM Can Run: "+kmPossible.toFixed(0)+" KM";
+
+if(cngRemaining <= 1){
+document.getElementById("fuelAlert").innerHTML =
+"<div class='alert-verylow'>🚨 VERY LOW CNG - Fill Immediately!</div>";
+}
+else if(cngRemaining <= 2){
+document.getElementById("fuelAlert").innerHTML =
+"<div class='alert-low'>⚠ Low CNG Warning</div>";
+}
+else{
+document.getElementById("fuelAlert").innerHTML="";
+}
+
+/* Monthly Filter */
+let month = document.getElementById("monthFilter")?.value;
+let filtered = records;
+
+if(month){
+filtered = records.filter(r=>r.date.startsWith(month));
+}
+
+let totalProfit = filtered.reduce((a,b)=>a+b.profit,0);
+
+if(document.getElementById("monthlySummary"))
+document.getElementById("monthlySummary").innerHTML =
+"Total Entries: "+filtered.length+
+"<br>Total Earning: ₹"+totalProfit;
+
+/* Charts */
+
+let labels = records.map(r=>r.date);
+
+if(dailyChart) dailyChart.destroy();
+dailyChart = new Chart(document.getElementById("dailyChart"),{
+type:'bar',
+data:{labels:labels,datasets:[{label:'Daily Earnings ₹',data:records.map(r=>r.earning)}]}
+});
+
+if(profitChart) profitChart.destroy();
+profitChart = new Chart(document.getElementById("profitChart"),{
+type:'line',
+data:{labels:labels,datasets:[{label:'Profit ₹',data:records.map(r=>r.profit)}]}
+});
+
+if(maintChart) maintChart.destroy();
+maintChart = new Chart(document.getElementById("maintChart"),{
+type:'pie',
+data:{
+labels:maintenance.map(m=>m.type),
+datasets:[{data:maintenance.map(m=>m.cost)}]
+}
+});
+}
+
+function exportCSV(){
+
+let month = document.getElementById("monthFilter")?.value;
+let filtered = records;
+
+if(month){
+filtered = records.filter(r=>r.date.startsWith(month));
+}
+
+let csv = "Date,KM,Earning,CNG_Filled(KG)\n";
+
+filtered.forEach(r=>{
+csv += `${r.date},${r.km},${r.earning},${r.fuel}\n`;
+});
+
+let blob = new Blob([csv],{type:"text/csv"});
+let url = URL.createObjectURL(blob);
+let a = document.createElement("a");
+a.href = url;
+a.download = "cng_monthly_data.csv";
+a.click();
+}
+
+display();
+
+</script>
+
+</body>
+</html>
