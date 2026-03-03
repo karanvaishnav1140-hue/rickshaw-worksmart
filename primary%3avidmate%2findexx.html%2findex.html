@@ -1,204 +1,281 @@
-l<!DOCTYPE html>
+
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rickshaw Tracker</title>
+<title>Rickshaw Business Control</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#007bff">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {font-family: Arial; padding:15px;}
-.box {background:white; padding:15px; margin-bottom:15px; border-radius:10px;}
-input, button, select {padding:8px; margin:5px 0; width:100%;}
-button {background:#007bff; color:white; border:none; border-radius:5px;}
-table {width:100%; border-collapse:collapse;}
-th, td {border:1px solid #ddd; padding:6px; text-align:center;}
-th {background:#007bff; color:white;}
-.hidden {display:none;}
-.lang-btn {width:auto;}
+body {
+  font-family: Arial;
+  background: #f4f7fc;
+  margin: 0;
+  text-align: center;
+}
+.login-box, .container {
+  background: white;
+  width: 95%;
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+input {
+  padding: 8px;
+  margin: 5px;
+  width: 150px;
+}
+button {
+  padding: 8px 15px;
+  margin: 5px;
+  border: none;
+  background: #007bff;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+button:hover { background: #0056b3; }
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 15px;
+}
+.card {
+  background: #eaf1ff;
+  padding: 15px;
+  margin: 5px;
+  width: 160px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+.profit { background: #d4edda; }
+.warning { color: red; font-weight: bold; }
+table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+th {
+  background: #007bff;
+  color: white;
+}
+.logout { background: red; }
 </style>
 </head>
 <body>
 
-<select onchange="changeLang(this.value)" class="lang-btn">
-<option value="en">English</option>
-<option value="hi"></option>
-</select>
-
-<h2 id="title"> Rickshaw Tracker</h2>
-
-<div id="loginBox" class="box">
-<h3 id="passTitle">Enter Password</h3>
-<input type="password" id="passInput" placeholder="Password">
-<button onclick="login()" id="loginBtn">Login</button>
+<div class="login-box" id="loginBox">
+  <h2>Rickshaw Business Login</h2>
+  <input type="text" id="userId" placeholder="Enter Your ID">
+  <button onclick="login()">Login</button>
 </div>
 
-<div id="app" class="hidden">
+<div class="container" id="app" style="display:none;">
 
-<div class="box">
+<h1>Rickshaw Business Dashboard</h1>
+<h3 id="welcomeUser"></h3>
+
+<input type="number" id="tankCapacity" placeholder="Tank Capacity (KG)">
+<button onclick="saveTank()">Save Tank</button>
+
+<br><br>
+
 <input type="date" id="date">
-<input type="number" id="km" placeholder="Total KM">
-<input type="number" id="earning" placeholder="Earning ">
-<input type="number" id="fuel" placeholder="Fuel ">
-<button onclick="save()" id="saveBtn">Save</button>
+<input type="number" id="km" placeholder="KM">
+<input type="number" id="earning" placeholder="Earning ₹">
+<input type="number" id="cngFilled" placeholder="CNG Filled (KG)">
+<input type="number" id="cngRemaining" placeholder="CNG Remaining (KG)">
+<input type="number" id="cngPrice" placeholder="CNG Price per KG ₹">
+<button onclick="addEntry()">Save Entry</button>
+
+<br>
+<input type="month" id="monthFilter" onchange="filterMonth()">
+
+<div class="summary">
+<div class="card">Total KM<br><span id="totalKM">0</span></div>
+<div class="card">Total Earnings<br>₹<span id="totalEarning">0</span></div>
+<div class="card">AI Estimate<br>₹<span id="aiEstimate">0</span></div>
+<div class="card">CNG Used<br><span id="totalCNG">0</span> KG</div>
+<div class="card">CNG Expense<br>₹<span id="totalCNGCost">0</span></div>
+<div class="card profit">Net Profit<br>₹<span id="netProfit">0</span></div>
+<div class="card">KM Left<br><span id="kmLeft">0</span></div>
 </div>
 
-<div class="box">
-<h3 id="monthlyTitle">Monthly Summary</h3>
-<p id="monthly"></p>
-</div>
+<h3 id="fuelWarning" class="warning"></h3>
 
-<div class="box">
-<canvas id="chart"></canvas>
-</div>
-
-<div class="box">
 <table>
 <thead>
 <tr>
-<th id="thDate">Date</th>
-<th id="thKM">KM</th>
-<th id="thEarn">Earning</th>
-<th id="thFuel">Fuel</th>
-<th id="thProfit">Profit</th>
+<th>Date</th>
+<th>KM</th>
+<th>Earning</th>
+<th>CNG</th>
+<th>Remain</th>
+<th>Action</th>
 </tr>
 </thead>
-<tbody id="data"></tbody>
+<tbody id="dataTable"></tbody>
 </table>
-</div>
+
+<button class="logout" onclick="logout()">Logout</button>
 
 </div>
 
 <script>
-let password="1234";
-let lang="en";
-let records=JSON.parse(localStorage.getItem("rickshawLang"))||[];
-let chart;
-
-const text={
-en:{
-title:" Rickshaw Tracker",
-passTitle:"Enter Password",
-login:"Login",
-save:"Save",
-monthly:"Monthly Summary",
-date:"Date",
-km:"KM",
-earning:"Earning",
-fuel:"Fuel",
-profit:"Profit"
-},
-hi:{
-title:"  ",
-passTitle:" ",
-login:"",
-save:" ",
-monthly:" ",
-date:"",
-km:"",
-earning:"",
-fuel:"",
-profit:""
-}
-};
-
-function changeLang(l){
-lang=l;
-document.getElementById("title").innerText=text[l].title;
-document.getElementById("passTitle").innerText=text[l].passTitle;
-document.getElementById("loginBtn").innerText=text[l].login;
-document.getElementById("saveBtn").innerText=text[l].save;
-document.getElementById("monthlyTitle").innerText=text[l].monthly;
-document.getElementById("thDate").innerText=text[l].date;
-document.getElementById("thKM").innerText=text[l].km;
-document.getElementById("thEarn").innerText=text[l].earning;
-document.getElementById("thFuel").innerText=text[l].fuel;
-document.getElementById("thProfit").innerText=text[l].profit;
-}
+let currentUser="";
+let editIndex=-1;
+let allData=[];
 
 function login(){
-if(document.getElementById("passInput").value===password){
-document.getElementById("loginBox").style.display="none";
-document.getElementById("app").classList.remove("hidden");
-display();
-}else{
-alert("Wrong Password");
-}
-}
-
-function save(){
-let date=document.getElementById("date").value;
-let km=parseFloat(document.getElementById("km").value);
-let earning=parseFloat(document.getElementById("earning").value);
-let fuel=parseFloat(document.getElementById("fuel").value);
-let profit=earning-fuel;
-
-records.push({date,km,earning,fuel,profit});
-localStorage.setItem("rickshawLang",JSON.stringify(records));
-display();
+const userId=document.getElementById("userId").value;
+if(!userId)return alert("Enter ID");
+currentUser=userId;
+localStorage.setItem("currentUser",currentUser);
+loginBox.style.display="none";
+app.style.display="block";
+welcomeUser.innerText="Welcome, "+currentUser;
+loadData();
 }
 
-function display(){
-let table=document.getElementById("data");
-table.innerHTML="";
-let totalE=0,totalF=0,totalKM=0;
+function logout(){
+localStorage.removeItem("currentUser");
+location.reload();
+}
 
-records.forEach(r=>{
-totalE+=r.earning;
-totalF+=r.fuel;
-totalKM+=r.km;
+function saveTank(){
+const cap=tankCapacity.value;
+if(!cap)return alert("Enter tank capacity");
+localStorage.setItem(currentUser+"_tank",cap);
+alert("Tank saved");
+}
 
-tbody.innerHTML+=`<tr>
-<td>${r.date}</td>
-<td>${r.km}</td>
-<td>₹${r.earning}</td>
-<td>₹${r.fuel}</td>
-<td>₹${r.profit}</td>
+function addEntry(){
+const entry={
+date:date.value,
+km:Number(km.value),
+earning:Number(earning.value),
+cngFilled:Number(cngFilled.value||0),
+cngRemaining:Number(cngRemaining.value||0),
+cngPrice:Number(cngPrice.value||0)
+};
+if(!entry.date||!entry.km||!entry.earning)
+return alert("Fill required fields");
+if(editIndex===-1)allData.push(entry);
+else{allData[editIndex]=entry;editIndex=-1;}
+saveData();
+clearForm();
+renderTable(allData);
+calculateSummary(allData);
+}
+
+function loadData(){
+allData=JSON.parse(localStorage.getItem(currentUser))||[];
+renderTable(allData);
+calculateSummary(allData);
+}
+
+function saveData(){
+localStorage.setItem(currentUser,JSON.stringify(allData));
+}
+
+function renderTable(data){
+dataTable.innerHTML="";
+data.forEach((item,index)=>{
+dataTable.innerHTML+=`
+<tr>
+<td>${item.date}</td>
+<td>${item.km}</td>
+<td>${item.earning}</td>
+<td>${item.cngFilled}</td>
+<td>${item.cngRemaining}</td>
 <td>
-<button onclick="editRecord(${i})">Edit</button>
-<button onclick="deleteRecord(${i})" style="background:red">Delete</button>
+<button onclick="editEntry(${index})">Edit</button>
+<button onclick="deleteEntry(${index})" style="background:red;">Delete</button>
 </td>
 </tr>`;
 });
-
-document.getElementById("monthly").innerHTML=
-"Total KM: "+totalKM+
-"<br>Total Earning: "+totalE+
-"<br>Total Fuel: "+totalF+
-"<br><b>Net Profit: "+(totalE-totalF)+"</b>";
-
-drawChart();
 }
 
-function drawChart(){
-let labels=records.map(r=>r.date);
-let data=records.map(r=>r.earning);
-if(chart) chart.destroy();
-chart=new Chart(document.getElementById("chart"),{
-type:'bar',
-data:{labels:labels,datasets:[{label:'Daily ',data:data}]}
+function editEntry(index){
+const item=allData[index];
+date.value=item.date;
+km.value=item.km;
+earning.value=item.earning;
+cngFilled.value=item.cngFilled;
+cngRemaining.value=item.cngRemaining;
+cngPrice.value=item.cngPrice;
+editIndex=index;
+}
+
+function deleteEntry(index){
+allData.splice(index,1);
+saveData();
+renderTable(allData);
+calculateSummary(allData);
+}
+
+function calculateSummary(data){
+let totalKM=0,totalEarn=0,totalCNG=0,totalCNGCost=0,lastRemaining=0;
+data.forEach(item=>{
+totalKM+=item.km;
+totalEarn+=item.earning;
+totalCNG+=item.cngFilled;
+totalCNGCost+=(item.cngFilled*item.cngPrice);
+lastRemaining=item.cngRemaining;
 });
-}
-function deleteRecord(index){
-  if(confirm("Delete this entry?")){
-    records.splice(index,1);
-    localStorage.setItem("records",JSON.stringify(records));
-    loadData();
-  }
+totalKMSpan.innerText=totalKM;
+totalEarning.innerText=totalEarn;
+aiEstimate.innerText=data.length?Math.round(totalEarn/data.length):0;
+totalCNGSpan=document.getElementById("totalCNG");
+totalCNGSpan.innerText=totalCNG;
+totalCNGCostSpan=document.getElementById("totalCNGCost");
+totalCNGCostSpan.innerText=totalCNGCost;
+netProfit.innerText=totalEarn-totalCNGCost;
+const avgKmPerKg=totalCNG?(totalKM/totalCNG):0;
+kmLeft.innerText=Math.round(lastRemaining*avgKmPerKg);
+const tankCap=localStorage.getItem(currentUser+"_tank");
+if(tankCap&&lastRemaining<tankCap*0.2)
+fuelWarning.innerText="⚠ Low Fuel! Fill CNG Soon!";
+else fuelWarning.innerText="";
 }
 
-function editRecord(index){
-  let r = records[index];
-  document.getElementById("date").value = r.date;
-  document.getElementById("km").value = r.km;
-  document.getElementById("earning").value = r.earning;
-  document.getElementById("fuel").value = r.fuel;
-  records.splice(index,1);
-  localStorage.setItem("records",JSON.stringify(records));
-  loadData();
+function filterMonth(){
+const selected=monthFilter.value;
+if(!selected)return renderTable(allData);
+const filtered=allData.filter(item=>item.date.startsWith(selected));
+renderTable(filtered);
+calculateSummary(filtered);
 }
+
+function clearForm(){
+date.value="";
+km.value="";
+earning.value="";
+cngFilled.value="";
+cngRemaining.value="";
+cngPrice.value="";
+}
+
+window.onload=function(){
+const savedUser=localStorage.getItem("currentUser");
+if(savedUser){
+currentUser=savedUser;
+loginBox.style.display="none";
+app.style.display="block";
+welcomeUser.innerText="Welcome, "+currentUser;
+loadData();
+}
+};
 
 if('serviceWorker' in navigator){
 navigator.serviceWorker.register('service-worker.js');
