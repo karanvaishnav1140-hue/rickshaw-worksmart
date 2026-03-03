@@ -1,0 +1,209 @@
+l<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rickshaw Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#007bff">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {font-family: Arial; padding:15px;}
+.box {background:white; padding:15px; margin-bottom:15px; border-radius:10px;}
+input, button, select {padding:8px; margin:5px 0; width:100%;}
+button {background:#007bff; color:white; border:none; border-radius:5px;}
+table {width:100%; border-collapse:collapse;}
+th, td {border:1px solid #ddd; padding:6px; text-align:center;}
+th {background:#007bff; color:white;}
+.hidden {display:none;}
+.lang-btn {width:auto;}
+</style>
+</head>
+<body>
+
+<select onchange="changeLang(this.value)" class="lang-btn">
+<option value="en">English</option>
+<option value="hi"></option>
+</select>
+
+<h2 id="title"> Rickshaw Tracker</h2>
+
+<div id="loginBox" class="box">
+<h3 id="passTitle">Enter Password</h3>
+<input type="password" id="passInput" placeholder="Password">
+<button onclick="login()" id="loginBtn">Login</button>
+</div>
+
+<div id="app" class="hidden">
+
+<div class="box">
+<input type="date" id="date">
+<input type="number" id="km" placeholder="Total KM">
+<input type="number" id="earning" placeholder="Earning ">
+<input type="number" id="fuel" placeholder="Fuel ">
+<button onclick="save()" id="saveBtn">Save</button>
+</div>
+
+<div class="box">
+<h3 id="monthlyTitle">Monthly Summary</h3>
+<p id="monthly"></p>
+</div>
+
+<div class="box">
+<canvas id="chart"></canvas>
+</div>
+
+<div class="box">
+<table>
+<thead>
+<tr>
+<th id="thDate">Date</th>
+<th id="thKM">KM</th>
+<th id="thEarn">Earning</th>
+<th id="thFuel">Fuel</th>
+<th id="thProfit">Profit</th>
+</tr>
+</thead>
+<tbody id="data"></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+let password="1234";
+let lang="en";
+let records=JSON.parse(localStorage.getItem("rickshawLang"))||[];
+let chart;
+
+const text={
+en:{
+title:" Rickshaw Tracker",
+passTitle:"Enter Password",
+login:"Login",
+save:"Save",
+monthly:"Monthly Summary",
+date:"Date",
+km:"KM",
+earning:"Earning",
+fuel:"Fuel",
+profit:"Profit"
+},
+hi:{
+title:"  ",
+passTitle:" ",
+login:"",
+save:" ",
+monthly:" ",
+date:"",
+km:"",
+earning:"",
+fuel:"",
+profit:""
+}
+};
+
+function changeLang(l){
+lang=l;
+document.getElementById("title").innerText=text[l].title;
+document.getElementById("passTitle").innerText=text[l].passTitle;
+document.getElementById("loginBtn").innerText=text[l].login;
+document.getElementById("saveBtn").innerText=text[l].save;
+document.getElementById("monthlyTitle").innerText=text[l].monthly;
+document.getElementById("thDate").innerText=text[l].date;
+document.getElementById("thKM").innerText=text[l].km;
+document.getElementById("thEarn").innerText=text[l].earning;
+document.getElementById("thFuel").innerText=text[l].fuel;
+document.getElementById("thProfit").innerText=text[l].profit;
+}
+
+function login(){
+if(document.getElementById("passInput").value===password){
+document.getElementById("loginBox").style.display="none";
+document.getElementById("app").classList.remove("hidden");
+display();
+}else{
+alert("Wrong Password");
+}
+}
+
+function save(){
+let date=document.getElementById("date").value;
+let km=parseFloat(document.getElementById("km").value);
+let earning=parseFloat(document.getElementById("earning").value);
+let fuel=parseFloat(document.getElementById("fuel").value);
+let profit=earning-fuel;
+
+records.push({date,km,earning,fuel,profit});
+localStorage.setItem("rickshawLang",JSON.stringify(records));
+display();
+}
+
+function display(){
+let table=document.getElementById("data");
+table.innerHTML="";
+let totalE=0,totalF=0,totalKM=0;
+
+records.forEach(r=>{
+totalE+=r.earning;
+totalF+=r.fuel;
+totalKM+=r.km;
+
+tbody.innerHTML+=`<tr>
+<td>${r.date}</td>
+<td>${r.km}</td>
+<td>₹${r.earning}</td>
+<td>₹${r.fuel}</td>
+<td>₹${r.profit}</td>
+<td>
+<button onclick="editRecord(${i})">Edit</button>
+<button onclick="deleteRecord(${i})" style="background:red">Delete</button>
+</td>
+</tr>`;
+});
+
+document.getElementById("monthly").innerHTML=
+"Total KM: "+totalKM+
+"<br>Total Earning: "+totalE+
+"<br>Total Fuel: "+totalF+
+"<br><b>Net Profit: "+(totalE-totalF)+"</b>";
+
+drawChart();
+}
+
+function drawChart(){
+let labels=records.map(r=>r.date);
+let data=records.map(r=>r.earning);
+if(chart) chart.destroy();
+chart=new Chart(document.getElementById("chart"),{
+type:'bar',
+data:{labels:labels,datasets:[{label:'Daily ',data:data}]}
+});
+}
+function deleteRecord(index){
+  if(confirm("Delete this entry?")){
+    records.splice(index,1);
+    localStorage.setItem("records",JSON.stringify(records));
+    loadData();
+  }
+}
+
+function editRecord(index){
+  let r = records[index];
+  document.getElementById("date").value = r.date;
+  document.getElementById("km").value = r.km;
+  document.getElementById("earning").value = r.earning;
+  document.getElementById("fuel").value = r.fuel;
+  records.splice(index,1);
+  localStorage.setItem("records",JSON.stringify(records));
+  loadData();
+}
+
+if('serviceWorker' in navigator){
+navigator.serviceWorker.register('service-worker.js');
+}
+</script>
+
+</body>
+</html>
