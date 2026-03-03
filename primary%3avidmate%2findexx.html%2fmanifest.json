@@ -1,14 +1,20 @@
 {
-  "name": "Rickshaw Manager",
-  "short_name": "Rickshaw",
+  "name": "Rickshaw Business Control",
+  "short_name": "Rickshaw App",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#007bff",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/743/743922.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
