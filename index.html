@@ -2,330 +2,282 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CNG Rickshaw Business Pro</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>Rickshaw Business Control</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="manifest" href="manifest.json">
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#0f172a;
-color:white;
+body {
+  font-family: Arial;
+  background: #f4f7fc;
+  margin: 0;
+  text-align: center;
 }
-
-.header{
-text-align:center;
-padding:15px;
-font-size:20px;
-font-weight:bold;
-background:#1e293b;
+.login-box, .container {
+  background: white;
+  width: 95%;
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
-
-.screen{
-display:none;
-padding:15px;
-padding-bottom:90px;
+input {
+  padding: 8px;
+  margin: 5px;
+  width: 150px;
 }
-
-.active{display:block;}
-
-.card{
-background:#1e293b;
-padding:15px;
-margin-bottom:15px;
-border-radius:12px;
+button {
+  padding: 8px 15px;
+  margin: 5px;
+  border: none;
+  background: #007bff;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
 }
-
-input,select,button{
-width:100%;
-padding:10px;
-margin:5px 0;
-border-radius:8px;
-border:none;
+button:hover { background: #0056b3; }
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 15px;
 }
-
-button{
-background:#22c55e;
-color:white;
-font-weight:bold;
+.card {
+  background: #eaf1ff;
+  padding: 15px;
+  margin: 5px;
+  width: 160px;
+  border-radius: 8px;
+  font-weight: bold;
 }
-
-.alert-low{
-background:orange;
-padding:8px;
-border-radius:8px;
-margin-top:8px;
+.profit { background: #d4edda; }
+.warning { color: red; font-weight: bold; }
+table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
 }
-
-.alert-verylow{
-background:red;
-padding:8px;
-border-radius:8px;
-margin-top:8px;
+th, td {
+  padding: 10px;
+  border: 1px solid #ddd;
 }
-
-.bottom-nav{
-position:fixed;
-bottom:0;
-width:100%;
-background:#000;
-display:flex;
-justify-content:space-around;
-padding:10px 0;
+th {
+  background: #007bff;
+  color: white;
 }
-
-.bottom-nav div{
-text-align:center;
-font-size:12px;
-}
-
-.bottom-nav i{
-display:block;
-font-size:20px;
-}
-
-canvas{
-background:white;
-border-radius:10px;
-}
+.logout { background: red; }
 </style>
 </head>
-
 <body>
 
-<div class="header">
-🚕 CNG Rickshaw Business Pro
+<div class="login-box" id="loginBox">
+  <h2>Rickshaw Business Login</h2>
+  <input type="text" id="userId" placeholder="Enter Your ID">
+  <button onclick="login()">Login</button>
 </div>
 
-<!-- DAILY SCREEN -->
-<div id="daily" class="screen active">
+<div class="container" id="app" style="display:none;">
 
-<div class="card">
-<h3>CNG Settings</h3>
-<input type="number" id="mileage" placeholder="Mileage (KM per KG)">
-<input type="number" id="tankCapacity" placeholder="Cylinder Capacity (KG)">
-</div>
+<h1>Rickshaw Business Dashboard</h1>
+<h3 id="welcomeUser"></h3>
 
-<div class="card">
-<h3>Daily Entry</h3>
+<input type="number" id="tankCapacity" placeholder="Tank Capacity (KG)">
+<button onclick="saveTank()">Save Tank</button>
+
+<br><br>
+
 <input type="date" id="date">
-<input type="number" id="km" placeholder="KM Driven">
+<input type="number" id="km" placeholder="KM">
 <input type="number" id="earning" placeholder="Earning ₹">
-<input type="number" id="fuel" placeholder="CNG Filled (KG)">
-<button onclick="save()">Save Entry</button>
+<input type="number" id="cngFilled" placeholder="CNG Filled (KG)">
+<input type="number" id="cngRemaining" placeholder="CNG Remaining (KG)">
+<input type="number" id="cngPrice" placeholder="CNG Price per KG ₹">
+<button onclick="addEntry()">Save Entry</button>
+
+<br>
+<input type="month" id="monthFilter" onchange="filterMonth()">
+
+<div class="summary">
+<div class="card">Total KM<br><span id="totalKM">0</span></div>
+<div class="card">Total Earnings<br>₹<span id="totalEarning">0</span></div>
+<div class="card">AI Estimate<br>₹<span id="aiEstimate">0</span></div>
+<div class="card">CNG Used<br><span id="totalCNG">0</span> KG</div>
+<div class="card">CNG Expense<br>₹<span id="totalCNGCost">0</span></div>
+<div class="card profit">Net Profit<br>₹<span id="netProfit">0</span></div>
+<div class="card">KM Left<br><span id="kmLeft">0</span></div>
 </div>
 
-<div class="card">
-<h3>CNG Status</h3>
-<p id="fuelStatus"></p>
-<div id="fuelAlert"></div>
-</div>
+<h3 id="fuelWarning" class="warning"></h3>
 
-<div class="card">
-<h3>Daily Earnings Chart</h3>
-<canvas id="dailyChart"></canvas>
-</div>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>KM</th>
+<th>Earning</th>
+<th>CNG</th>
+<th>Remain</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody id="dataTable"></tbody>
+</table>
 
-</div>
+<button class="logout" onclick="logout()">Logout</button>
 
-<!-- MONTHLY SCREEN -->
-<div id="monthly" class="screen">
-<div class="card">
-<input type="month" id="monthFilter" onchange="display()">
-<button onclick="exportCSV()">Export Excel</button>
-</div>
-
-<div class="card">
-<p id="monthlySummary"></p>
-</div>
-</div>
-
-<!-- MAINTENANCE SCREEN -->
-<div id="maintenance" class="screen">
-<div class="card">
-<select id="maintType">
-<option>Service</option>
-<option>Oil Change</option>
-<option>Tyre</option>
-<option>Repair</option>
-</select>
-<input type="number" id="maintCost" placeholder="Cost ₹">
-<button onclick="addMaintenance()">Add</button>
-</div>
-
-<div class="card">
-<h3>Maintenance Chart</h3>
-<canvas id="maintChart"></canvas>
-</div>
-</div>
-
-<!-- CHART SCREEN -->
-<div id="charts" class="screen">
-<div class="card">
-<h3>Profit Chart</h3>
-<canvas id="profitChart"></canvas>
-</div>
-</div>
-
-<!-- BOTTOM NAV -->
-<div class="bottom-nav">
-<div onclick="openScreen('daily')"><i>📅</i>Daily</div>
-<div onclick="openScreen('monthly')"><i>📊</i>Monthly</div>
-<div onclick="openScreen('maintenance')"><i>🔧</i>Maint.</div>
-<div onclick="openScreen('charts')"><i>📈</i>Charts</div>
 </div>
 
 <script>
+let currentUser="";
+let editIndex=-1;
+let allData=[];
 
-let records = JSON.parse(localStorage.getItem("cngFullRecords")) || [];
-let maintenance = JSON.parse(localStorage.getItem("cngMaintRecords")) || [];
-
-let dailyChart, profitChart, maintChart;
-
-function openScreen(id){
-document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-document.getElementById(id).classList.add('active');
-display();
+function login(){
+const userId=document.getElementById("userId").value;
+if(!userId)return alert("Enter ID");
+currentUser=userId;
+localStorage.setItem("currentUser",currentUser);
+loginBox.style.display="none";
+app.style.display="block";
+welcomeUser.innerText="Welcome, "+currentUser;
+loadData();
 }
 
-function save(){
-
-let date = document.getElementById("date").value;
-let km = parseFloat(document.getElementById("km").value);
-let earning = parseFloat(document.getElementById("earning").value);
-let fuel = parseFloat(document.getElementById("fuel").value);
-
-if(!date || isNaN(km) || isNaN(earning) || isNaN(fuel)){
-alert("Please fill all fields properly");
-return;
+function logout(){
+localStorage.removeItem("currentUser");
+location.reload();
 }
 
-let profit = earning; // CNG cost separate track nahi kar rahe
-
-records.push({date,km,earning,fuel,profit});
-localStorage.setItem("cngFullRecords", JSON.stringify(records));
-
-display();
+function saveTank(){
+const cap=tankCapacity.value;
+if(!cap)return alert("Enter tank capacity");
+localStorage.setItem(currentUser+"_tank",cap);
+alert("Tank saved");
 }
 
-function addMaintenance(){
-let type = document.getElementById("maintType").value;
-let cost = parseFloat(document.getElementById("maintCost").value);
-
-if(isNaN(cost)){ alert("Enter cost"); return; }
-
-maintenance.push({type,cost});
-localStorage.setItem("cngMaintRecords", JSON.stringify(maintenance));
-
-display();
+function addEntry(){
+const entry={
+date:date.value,
+km:Number(km.value),
+earning:Number(earning.value),
+cngFilled:Number(cngFilled.value||0),
+cngRemaining:Number(cngRemaining.value||0),
+cngPrice:Number(cngPrice.value||0)
+};
+if(!entry.date||!entry.km||!entry.earning)
+return alert("Fill required fields");
+if(editIndex===-1)allData.push(entry);
+else{allData[editIndex]=entry;editIndex=-1;}
+saveData();
+clearForm();
+renderTable(allData);
+calculateSummary(allData);
 }
 
-function display(){
-
-let mileage = parseFloat(document.getElementById("mileage").value) || 35;
-
-let totalKM = records.reduce((a,b)=>a+b.km,0);
-let totalCNGFilled = records.reduce((a,b)=>a+b.fuel,0);
-
-let cngUsed = totalKM / mileage;
-let cngRemaining = totalCNGFilled - cngUsed;
-if(cngRemaining < 0) cngRemaining = 0;
-
-let kmPossible = cngRemaining * mileage;
-
-document.getElementById("fuelStatus").innerHTML =
-"Total CNG Filled: "+totalCNGFilled.toFixed(2)+" KG<br>"+
-"CNG Used: "+cngUsed.toFixed(2)+" KG<br>"+
-"<b>CNG Remaining: "+cngRemaining.toFixed(2)+" KG</b><br>"+
-"KM Can Run: "+kmPossible.toFixed(0)+" KM";
-
-if(cngRemaining <= 1){
-document.getElementById("fuelAlert").innerHTML =
-"<div class='alert-verylow'>🚨 VERY LOW CNG - Fill Immediately!</div>";
-}
-else if(cngRemaining <= 2){
-document.getElementById("fuelAlert").innerHTML =
-"<div class='alert-low'>⚠ Low CNG Warning</div>";
-}
-else{
-document.getElementById("fuelAlert").innerHTML="";
+function loadData(){
+allData=JSON.parse(localStorage.getItem(currentUser))||[];
+renderTable(allData);
+calculateSummary(allData);
 }
 
-/* Monthly Filter */
-let month = document.getElementById("monthFilter")?.value;
-let filtered = records;
-
-if(month){
-filtered = records.filter(r=>r.date.startsWith(month));
+function saveData(){
+localStorage.setItem(currentUser,JSON.stringify(allData));
 }
 
-let totalProfit = filtered.reduce((a,b)=>a+b.profit,0);
-
-if(document.getElementById("monthlySummary"))
-document.getElementById("monthlySummary").innerHTML =
-"Total Entries: "+filtered.length+
-"<br>Total Earning: ₹"+totalProfit;
-
-/* Charts */
-
-let labels = records.map(r=>r.date);
-
-if(dailyChart) dailyChart.destroy();
-dailyChart = new Chart(document.getElementById("dailyChart"),{
-type:'bar',
-data:{labels:labels,datasets:[{label:'Daily Earnings ₹',data:records.map(r=>r.earning)}]}
-});
-
-if(profitChart) profitChart.destroy();
-profitChart = new Chart(document.getElementById("profitChart"),{
-type:'line',
-data:{labels:labels,datasets:[{label:'Profit ₹',data:records.map(r=>r.profit)}]}
-});
-
-if(maintChart) maintChart.destroy();
-maintChart = new Chart(document.getElementById("maintChart"),{
-type:'pie',
-data:{
-labels:maintenance.map(m=>m.type),
-datasets:[{data:maintenance.map(m=>m.cost)}]
-}
+function renderTable(data){
+dataTable.innerHTML="";
+data.forEach((item,index)=>{
+dataTable.innerHTML+=`
+<tr>
+<td>${item.date}</td>
+<td>${item.km}</td>
+<td>${item.earning}</td>
+<td>${item.cngFilled}</td>
+<td>${item.cngRemaining}</td>
+<td>
+<button onclick="editEntry(${index})">Edit</button>
+<button onclick="deleteEntry(${index})" style="background:red;">Delete</button>
+</td>
+</tr>`;
 });
 }
 
-function exportCSV(){
-
-let month = document.getElementById("monthFilter")?.value;
-let filtered = records;
-
-if(month){
-filtered = records.filter(r=>r.date.startsWith(month));
+function editEntry(index){
+const item=allData[index];
+date.value=item.date;
+km.value=item.km;
+earning.value=item.earning;
+cngFilled.value=item.cngFilled;
+cngRemaining.value=item.cngRemaining;
+cngPrice.value=item.cngPrice;
+editIndex=index;
 }
 
-let csv = "Date,KM,Earning,CNG_Filled(KG)\n";
+function deleteEntry(index){
+allData.splice(index,1);
+saveData();
+renderTable(allData);
+calculateSummary(allData);
+}
 
-filtered.forEach(r=>{
-csv += `${r.date},${r.km},${r.earning},${r.fuel}\n`;
+function calculateSummary(data){
+let totalKM=0,totalEarn=0,totalCNG=0,totalCNGCost=0,lastRemaining=0;
+data.forEach(item=>{
+totalKM+=item.km;
+totalEarn+=item.earning;
+totalCNG+=item.cngFilled;
+totalCNGCost+=(item.cngFilled*item.cngPrice);
+lastRemaining=item.cngRemaining;
 });
-
-let blob = new Blob([csv],{type:"text/csv"});
-let url = URL.createObjectURL(blob);
-let a = document.createElement("a");
-a.href = url;
-a.download = "cng_monthly_data.csv";
-a.click();
+totalKMSpan.innerText=totalKM;
+totalEarning.innerText=totalEarn;
+aiEstimate.innerText=data.length?Math.round(totalEarn/data.length):0;
+totalCNGSpan=document.getElementById("totalCNG");
+totalCNGSpan.innerText=totalCNG;
+totalCNGCostSpan=document.getElementById("totalCNGCost");
+totalCNGCostSpan.innerText=totalCNGCost;
+netProfit.innerText=totalEarn-totalCNGCost;
+const avgKmPerKg=totalCNG?(totalKM/totalCNG):0;
+kmLeft.innerText=Math.round(lastRemaining*avgKmPerKg);
+const tankCap=localStorage.getItem(currentUser+"_tank");
+if(tankCap&&lastRemaining<tankCap*0.2)
+fuelWarning.innerText="⚠ Low Fuel! Fill CNG Soon!";
+else fuelWarning.innerText="";
 }
 
-display();
+function filterMonth(){
+const selected=monthFilter.value;
+if(!selected)return renderTable(allData);
+const filtered=allData.filter(item=>item.date.startsWith(selected));
+renderTable(filtered);
+calculateSummary(filtered);
+}
 
-</script>
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js")
-      .then(reg => console.log("Service Worker Registered"))
-      .catch(err => console.log("SW Error", err));
-  });
+function clearForm(){
+date.value="";
+km.value="";
+earning.value="";
+cngFilled.value="";
+cngRemaining.value="";
+cngPrice.value="";
+}
+
+window.onload=function(){
+const savedUser=localStorage.getItem("currentUser");
+if(savedUser){
+currentUser=savedUser;
+loginBox.style.display="none";
+app.style.display="block";
+welcomeUser.innerText="Welcome, "+currentUser;
+loadData();
+}
+};
+
+if('serviceWorker' in navigator){
+navigator.serviceWorker.register('service-worker.js');
 }
 </script>
 
